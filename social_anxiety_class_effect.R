@@ -1,7 +1,6 @@
 # Social Anxiety
 library(devtools)
-setwd("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Summar of Fun/multinma")
-
+setwd("~/Desktop/Github/multinma")
 library(multinma)
 library(dplyr)
 library(tidyr)
@@ -20,9 +19,9 @@ options(mc.cores = parallel::detectCores())
 #================= Network Setup ==================================
 
 # Read in data
-sa <- read_tsv("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Summar of Fun/Tasks from Supervisors/social_anxiety.txt")
-sa_trt <- read_tsv("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Summar of Fun/Tasks from Supervisors/social_anxiety_treatments.txt")
-sa_class <- read_tsv("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Summar of Fun/Tasks from Supervisors/social_anxiety_classes.txt")
+sa <- read_tsv("data-raw/social_anxiety/social_anxiety.txt")
+sa_trt <- read_tsv("data-raw/social_anxiety/social_anxiety_treatments.txt")
+sa_class <- read_tsv("data-raw/social_anxiety/social_anxiety_classes.txt")
 
 # Tidy data
 social_anxiety <- sa %>%
@@ -37,7 +36,6 @@ social_anxiety <- sa %>%
   # Add in class details
   left_join(sa_class, by = "classn")
 
-
 # Create network dataframe
 sa_net <- set_agd_contrast(social_anxiety,
                            studyc, trtc,
@@ -45,8 +43,9 @@ sa_net <- set_agd_contrast(social_anxiety,
                            trt_class = classc,
                            trt_ref = "Waitlist")
 
+undebug(multinma::nma)
 #================= Model simulations ==================================
-
+set.seed(951)
 # UME model vs trt effects
 sa_UME_FE <- nma(sa_net,
                  trt_effects = "fixed",
@@ -70,42 +69,36 @@ sa_fit_RE <- nma(sa_net,
                  trt_effects = "random",
                  prior_trt = normal(0, 100),
                  prior_het = half_normal(5),
+                 QR = TRUE
 )
 
 sa_fit_EXclass_RE <- nma(sa_net,
-                 trt_effects = "random",
-                 prior_trt = normal(0, 100),
-                 prior_het = half_normal(5),
-                 class_effects = "exchangeable",
-                 #class_sd = "common",
-                 prior_class_sd = normal(0.33,0.1),
-                 class_sd = list(`Exercise and SH no support` = c("Exercise promotion", "Self-help no support"),
-                                 `SSRIs and NSSA` = c("SSRI/SNRI", "NSSA")
-                                 # `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")
-                                 )
+                         trt_effects = "random",
+                         prior_trt = normal(0, 100),
+                         prior_het = half_normal(5),
+                         class_effects = "exchangeable",
+                         prior_class_sd = normal(0.33,0.1),
+                         class_sd = list(`Exercise and SH no support` = c("Exercise promotion", "Self-help no support"),
+                                         `SSRIs and NSSA` = c("SSRI/SNRI", "NSSA"),
+                                         `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")
+                         )
 )
 
 sa_fit_COclass_RE <- nma(sa_net,
-                       trt_effects = "random",
-                       prior_trt = normal(0, 100),
-                       prior_het = half_normal(5),
-                       class_effects = "common")
-                       #class_sd = "common",
-                       #prior_class_sd = normal(0.33,0.1))
-                       #class_sd = list(`Exercise and SH no support` = c("Exercise promotion", "Self-help no support"),
-                                       #`SSRIs and NSSA` = c("SSRI/SNRI", "NSSA"),
-                                       # `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")))
+                         trt_effects = "random",
+                         prior_trt = normal(0, 100),
+                         prior_het = half_normal(5),
+                         class_effects = "common")
 
 sa_fit_EXclass_FE <- nma(sa_net,
                          trt_effects = "fixed",
                          prior_trt = normal(0, 100),
-                         prior_het = half_normal(5),
+                         prior_het = half_normal(1),
                          class_effects = "exchangeable",
-                         #class_sd = "common",
                          prior_class_sd = normal(0.33,0.1),
                          class_sd = list(`Exercise and SH no support` = c("Exercise promotion", "Self-help no support"),
-                                         `SSRIs and NSSA` = c("SSRI/SNRI", "NSSA")
-                                         # `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")
+                                         `SSRIs and NSSA` = c("SSRI/SNRI", "NSSA"),
+                                         `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")
                          )
 )
 
@@ -114,11 +107,6 @@ sa_fit_COclass_FE <- nma(sa_net,
                          prior_trt = normal(0, 100),
                          prior_het = half_normal(5),
                          class_effects = "common"
-                         #class_sd = "common",
-                         #prior_class_sd = normal(0.33,0.1),
-                         #class_sd = list(`Exercise and SH no support` = c("Exercise promotion", "Self-help no support"),
-                         # `SSRIs and NSSA` = c("SSRI/SNRI", "NSSA")
-                         # `Psychodynamic & Other psychological therapies` = c("Psychodynamic psychotherapy", "Other psychological therapies")
 )
 
 #================= DIC table creation ==================================
@@ -143,157 +131,158 @@ summary(sa_fit_EXclass_RE, pars = "tau")
 summary(sa_fit_EXclass_FE, pars = "class_sd")
 summary(sa_fit_EXclass_RE, pars = "class_sd")
 
-# Data for the table
-models <- c("UME", "UME", "NMA", "NMA", "Common Class Effects", "Common Class Effects", "Exchangeable Class Effects", "Exchangeable Class Effects")
-treatment_effect_model <- c("Fixed", "Random", "Fixed", "Random", "Fixed", "Random", "Fixed", "Random")
-residual_deviance <- c(285.1, 160.7, 288.2, 162, 377, 157.8, 284.6, 162.7)
-pD <- c(60.1, 108.7, 40, 94.5, 15.9, 93, 34.1, 88.4)
-DIC <- c(345.2, 269.4, 328.2, 256.5, 392.9, 250.8, 318.7, 251.1)
-tau_values <- c("NA", "0.22 (0.16 - 0.29)", "NA", "0.21 (0.15 - 0.27)", "NA", "0.25 (0.20 - 0.31)", "NA", "0.20 (0.14 - 0.26)")
-tau_std_errors <- c("NA", 0.03, "NA", 0.03, "NA", 0.03, "NA", 0.03)
-tau_combined <- paste0(tau_values, " (", tau_std_errors, ")")
-
-# Creating a data frame
-model_data <- data.frame(Model = models,
-                         Treatment.effect = treatment_effect_model,
-                         Residual.deviance = residual_deviance,
-                         pD = pD,
-                         DIC = DIC,
-                         tau = tau_values)
-
-# Rename columns to include spaces
-colnames(model_data) <- c("Model", "Treatment effect", "Residual deviance", "pD", "DIC", "tau")
-
-# Rest of your code for creating and printing the gt table remains the same
-library(gt)
-
-# Creating a graphical table with gt and centering the text in all columns
-gt_table <- gt(model_data) %>%
-  cols_width(
-    vars(pD, DIC) ~ px(100),
-    vars(`Treatment effect`, tau) ~ px(150)
-  ) %>%
-  cols_align(align = "center", columns = everything()) # Center align all columns
-
-# Print the table
-print(gt_table)
-print(xtable(model_data, type='latex'))
-
-#Exchangeable CLASS_SD table
-class <- c("Anticonvulsants", "Benzodiazepines", "CBT group", "CBT individual", "Combined", "Exercise and SH no support", "Exposure", "MAOI", "SSRIs and NSSA", "Other psychological therapies", "Self-help with support")
-random <- c("0.31 (0.12 - 0.50)", "0.32 (0.14 - 0.52)", "0.30 (0.11 - 0.36)", "0.33 (0.16 - 0.50)", "0.35 (0.08 - 0.52)", "0.31 (0.11 - 0.50)", "0.31 (0.12 - 0.51)", "0.35 (0.19 - 0.54)", "0.17 (0.03 - 0.37)", "0.30 (0.10 - 0.49)", "0.30 (0.11 - 0.50)")
-fixed <- c("0.31 (0.11 - 0.50)", "0.32 (0.14 - 0.51)", "0.30 (0.13 - 0.49)", "0.33 (0.17 - 0.50)", "0.37 (0.23 - 0.53)", "0.30 (0.12 - 0.50)", "0.30 (0.10 - 0.51)", "0.35 (0.19 - 0.53)", "0.13 (0.03 - 0.32)", "0.29 (0.11 - 0.49)", "0.30 (0.10 - 0.50)")
-n <- c(3, 2, 3, 4, 5, 3, 2, 2, 8, 3, 2)
-
-# Creating a data frame
-model_data <- data.frame(`Exchangeable Class` = class,
-                         `Random` = random,
-                         `Fixed` = fixed,
-                         n = n)
-
-# Rename columns to include spaces
-colnames(model_data) <- c("Exchangeable Class", "Random", "Fixed", "n")
-
-# Creating a graphical table with gt
-
-
-gt_table <- gt(model_data) %>%
-  cols_width(
-    columns = vars(`Exchangeable Class`) ~ px(250),
-    columns = vars(n) ~ px(65),
-    columns = vars(Random, Fixed) ~ px(165)
-  ) %>%
-  cols_align(align = "center", columns = vars(Random, Fixed, n))  # Center align specific columns
-
-# Print the table
-print(gt_table)
-
-model_data <- data.frame(`Exchangeable Class` = class,
-                         `Random` = random,
-                         n = n)
-
-# Rename columns to include spaces
-colnames(model_data) <- c("Exchangeable Class", "Class sd(95% CI)", "n")
-
-gt_table <- gt(model_data) %>%
-  cols_width(
-    columns = vars(`Exchangeable Class`) ~ px(250),
-    columns = vars(n) ~ px(65),
-    columns = vars(`Class sd(95% CI)`) ~ px(165)
-  ) %>%
-  cols_align(align = "center", columns = vars(`Class sd(95% CI)`, n))  # Center align specific columns
-
-# Print the table
-print(gt_table)
-
-setwd("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables")
+summary(sa_fit_RE, pars = "d")
+summary(sa_fit_EXclass_RE, pars = "class_mean")
+summary(sa_fit_EXclass_RE, pars = "d")
+summary(sa_fit_COclass_RE, pars = "d")
 
 # DEV DEV Plot
 PlotA <- plot(sa_dic_ume_RE, sa_dic_COclass_RE, show_uncertainty = FALSE) +
   xlab("Residual deviance - UME RE Model") +
   ylab("Residual deviance - Common RE Model")
 
-ggsave(filename = "PlotA.pdf", plot = PlotA, path = "C:/Users/sjper/OneDrive/Desktop")
+PlotA
 
+#========Nodesplitting==========
 
-view(sa_dic_RE$pointwise)
-view(sa_dic_ume_RE$pointwise)
-# Studies with the most differing ResDev is "ALDEN2011" and "EMMELKAMP2006"
-# ALDEN2011 compares trt 1 to 30 (Waitlist vs CBT group)
-# A lot of others trails are using CBT group so results from ALDEN2011 could differ the most from the rest of trt 30 trails.
-# ALDEN2011 trt_effect -1.88 second largest trt_effect out of all trts. Biggest effect compared to other trt 30 trials.
-# EMMELKAMP2006 compares trt 1, 29, 35 (Waitlist vs Psychodynamic psychotherapy vs CBT individual)
-# Again there are plenty of other studies using both trt 29 and 35, so results from EMMELKAMP2006 could differ the most compared to the rest
-# EMMELKAMP2006 when compared to ref has the largest "negative" difference 0.159 (comparison performed worse than reference)
+Investigate <- sa_fit_RE$network$agd_contrast
+(sa_dic_RE$pointwise)
 
+get_nodesplits <- get_nodesplits(sa_net, include_consistency = FALSE)
+has_direct(sa_net, "Waitlist", "Psychodynamic psychotherapy")
+has_indirect(sa_net, "Waitlist", "Psychodynamic psychotherapy")
+
+therapy_data <- data.frame(
+  Group = c("CBT individual", "Waitlist", "Waitlist"),
+  Therapy_Type = c("Psychodynamic psychotherapy", "Psychodynamic psychotherapy", "CBT individual")
+)
+
+therapy_data_1 <- data.frame(
+  Group = c("Waitlist"),
+  Therapy_Type = c("CBT group")
+)
+
+sa_fit_RE_nodesplit <- nma(sa_net,
+                           consistency = "nodesplit",
+                           nodesplit = therapy_data,
+                           trt_effects = "random",
+                           prior_trt = normal(0, 100),
+                           prior_het = half_normal(5),
+)
+
+sa_fit_RE_nodesplit_1 <- nma(sa_net,
+                             consistency = "nodesplit",
+                             nodesplit = therapy_data_1,
+                             trt_effects = "random",
+                             prior_trt = normal(0, 100),
+                             prior_het = half_normal(5),
+)
+
+summary(sa_fit_RE_nodesplit)
+summary(sa_fit_RE_nodesplit_1)
+
+plot(sa_dic_RE)
+sa_dic_RE$pointwise$agd_contrast
 # DEV DEV Plot
 plotume <- plot(sa_dic_RE, sa_dic_ume_RE, show_uncertainty = FALSE) +
   xlab("Residual deviance - No Class model") +
   ylab("Residual deviance - UME model") +
   theme(text = element_text(size = 18))
+
 plotume
-ggsave("dev-dev_umeVSNMA.pdf", plot = plotume, width = 20, height = 20, units = "cm", path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables", scale = 1)
 
 resdev_RE <- sa_dic_RE$pointwise$agd_contrast$resdev
 resdev_ume_RE <- sa_dic_ume_RE$pointwise$agd_contrast$resdev
+resdev_RE_EX <- sa_dic_EXclass_RE$pointwise$agd_contrast$resdev
+resdev_RE_CO <- sa_dic_COclass_RE$pointwise$agd_contrast$resdev
+df <- sa_dic_RE$pointwise$agd_contrast$n_contrast
+sa_dic_EXclass_RE$pointwise
 
-dev_dev_data <- data.frame(resdev_RE, resdev_ume_RE)
-dev_dev_data$markerType <- 1
-rownames(dev_dev_data)[grepl("ALDEN2011", rownames(dev_dev_data))] -> special_cases1
-rownames(dev_dev_data)[grepl("EMMELKAMP2006", rownames(dev_dev_data))] -> special_cases2
-dev_dev_data$markerType[rownames(dev_dev_data) %in% special_cases1] <- "ALDEN2011"
-dev_dev_data$markerType[rownames(dev_dev_data) %in% special_cases2] <- "EMMELKAMP2006"
+dev_dev_UMEvsNMA <- data.frame(resdev_RE, resdev_ume_RE, df)
+dev_dev_NMAvsEX <- data.frame(resdev_RE_EX, resdev_RE, df)
+dev_dev_EXvsCO <- data.frame(resdev_RE_CO, resdev_RE_EX, df)
+dev_dev_UMEvsNMA$dev_diff <- dev_dev_UMEvsNMA$resdev_RE - dev_dev_UMEvsNMA$resdev_ume_RE
+dev_dev_NMAvsEX$dev_diff <- dev_dev_NMAvsEX$resdev_RE_EX - dev_dev_NMAvsEX$resdev_RE
+dev_dev_EXvsCO$dev_diff <- dev_dev_EXvsCO$resdev_RE_CO - dev_dev_EXvsCO$resdev_RE_EX
+
+sa_net$agd_contrast$.trtclass
+
+#============dev-dev plots==========
+
+dev_dev_UMEvsNMA$markerType <- 1
+rownames(dev_dev_UMEvsNMA)[grepl("ALDEN2011", rownames(dev_dev_UMEvsNMA))] -> special_cases1
+rownames(dev_dev_UMEvsNMA)[grepl("EMMELKAMP2006", rownames(dev_dev_UMEvsNMA))] -> special_cases2
+dev_dev_UMEvsNMA$markerType[rownames(dev_dev_UMEvsNMA) %in% special_cases1] <- "ALDEN2011"
+dev_dev_UMEvsNMA$markerType[rownames(dev_dev_UMEvsNMA) %in% special_cases2] <- "EMMELKAMP2006"
 
 # Adjust these values as needed based on your data's range
-xmin <- min(dev_dev_data$resdev_RE, dev_dev_data$resdev_ume_RE) - 0.1
-xmax <- max(dev_dev_data$resdev_RE, dev_dev_data$resdev_ume_RE) + 0.1
+xmin <- min(dev_dev_UMEvsNMA$resdev_RE, dev_dev_UMEvsNMA$resdev_ume_RE) - 0.1
+xmax <- max(dev_dev_UMEvsNMA$resdev_RE, dev_dev_UMEvsNMA$resdev_ume_RE) + 0.1
 
-plotUMEvsRE<-ggplot(data = dev_dev_data, aes(x = resdev_RE, y = resdev_ume_RE)) +
-  geom_point(aes(shape = factor(markerType)), size = 4) +  # Use shape based on markerType
-  scale_shape_manual(values = c("1" = 20, "ALDEN2011" = 1, "EMMELKAMP2006" = 4),
+plotUMEvsRE<-ggplot(data = dev_dev_UMEvsNMA, aes(x = resdev_RE, y = resdev_ume_RE)) +
+  geom_point(aes(shape = factor(markerType), color = factor(df)), size = 4) +  # Use shape based on markerType
+  scale_shape_manual(values = c("1" = 20, "ALDEN2011" = 20, "EMMELKAMP2006" = 20),
                      breaks = c("ALDEN2011", "EMMELKAMP2006")) +
+  scale_color_manual(values = c("#87CEEB", "#1E90FF", "#4169E1", "#000080")) +
   geom_abline(intercept = 0, slope = 1) +  # x=y line
   scale_x_continuous(name = "Residual Deviation - No Class model", limits = c(xmin, xmax)) +
   scale_y_continuous(name = "Residual Deviation - UME model", limits = c(xmin, xmax)) +
-  labs(shape = "Study") +
+  labs(shape = "Study", color = "Degrees of Freedom") +
   coord_fixed(ratio = 1) +  # Ensure the plot is a perfect square
   theme_minimal() +
+  ggrepel::geom_text_repel(aes(label = markerType),
+                           data = ~filter(., resdev_RE > 6),
+                           nudge_y = -0.3, # Adjusts position downward
+                           direction = "y", # Keeps labels aligned vertically
+                           min.segment.length = 0,
+                           segment.color = NA) +
   theme(panel.border = element_rect(colour = "black", fill=NA, size=1), # Add solid line around the graph
-        legend.position = c(0.65, 0.05), # Position legend at bottom left
-        legend.justification = c(0, 0), # Anchor point for legend position
-        legend.background = element_rect(fill = "white", colour = "black", size = 1), # Optional: remove background
-        legend.text = element_text(size = 12), # Increase legend text size
+        legend.position = "right", # Position legend at bottom left
         axis.title = element_text(size = 14), # Increase axis title size
         axis.text = element_text(size = 12), # Increase axis text size
         plot.title = element_text(size = 16), # Increase plot title size
-        legend.box.background = element_blank(), # Optional: remove box background
-        legend.box.margin = margin(0,0,0,0) # Optional: adjust spacing around the legend
   ) +
   ggtitle("Comparison of Residual Deviations")
 
 plotUMEvsRE
 
-ggsave("dev-dev_UMEvsRE.pdf", plot = plotUMEvsRE, width = 20, height = 20, units = "cm", path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables", scale = 1)
+plotREvsEX<-ggplot(data = dev_dev_NMAvsEX, aes(x = resdev_RE_EX, y = resdev_RE)) +
+  geom_point(aes(color = factor(df)), size = 4) +  # Use shape based on markerType
+  scale_color_manual(values = c("#87CEEB", "#1E90FF", "#4169E1", "#000080")) +
+  geom_abline(intercept = 0, slope = 1) +  # x=y line
+  scale_x_continuous(name = "Residual Deviation - Exchangeable class model", limits = c(xmin, 7.5)) +
+  scale_y_continuous(name = "Residual Deviation - No class model", limits = c(xmin, 7.5)) +
+  labs(shape = "Study", color = "Degrees of Freedom") +
+  coord_fixed(ratio = 1) +  # Ensure the plot is a perfect square
+  theme_minimal() +
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1), # Add solid line around the graph
+        legend.position = "right", # Position legend at bottom left
+        axis.title = element_text(size = 14), # Increase axis title size
+        axis.text = element_text(size = 12), # Increase axis text size
+        plot.title = element_text(size = 16), # Increase plot title size
+  ) +
+  ggtitle("Comparison of Residual Deviations")
+
+plotREvsEX
+
+plotEXvsCO<-ggplot(data = dev_dev_EXvsCO, aes(x = resdev_RE_CO, y = resdev_RE_EX)) +
+  geom_point(aes(color = factor(df)), size = 4) +  # Use shape based on markerType
+  scale_color_manual(values = c("#87CEEB", "#1E90FF", "#4169E1", "#000080")) +
+  geom_abline(intercept = 0, slope = 1) +  # x=y line
+  scale_x_continuous(name = "Residual Deviation - Common class model", limits = c(xmin, 7.5)) +
+  scale_y_continuous(name = "Residual Deviation - Exchageable class model", limits = c(xmin, 7.5)) +
+  labs(shape = "Study", color = "Degrees of Freedom") +
+  coord_fixed(ratio = 1) +  # Ensure the plot is a perfect square
+  theme_minimal() +
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1), # Add solid line around the graph
+        legend.position = "right", # Position legend at bottom left
+        axis.title = element_text(size = 14), # Increase axis title size
+        axis.text = element_text(size = 12), # Increase axis text size
+        plot.title = element_text(size = 16), # Increase plot title size
+  ) +
+  ggtitle("Comparison of Residual Deviations")
+
+plotEXvsCO
 
 # DEV DEV Plot EX vs no class
 plotEX <- plot(sa_dic_EXclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
@@ -301,9 +290,11 @@ plotEX <- plot(sa_dic_EXclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
   ylab("Residual deviance - No Class model") +
   theme(text = element_text(size = 18))
 plotEX
-ggsave("dev-dev_EXvsNMA.pdf", plot = plotEX, width = 20, height = 20, units = "cm", path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables", scale = 1)
 
-resdev_RE_class <- sa_dic_RE$pointwise$agd_contrast$resdev
+resdev_RE_EX <- sa_dic_EXclass_RE$pointwise$agd_contrast$resdev
+resdev_RE <- sa_dic_RE$pointwise$agd_contrast$resdev
+resdev_RE
+dev_dev_UMEvsNMA
 class_mapping_dic <- sa_net$agd_contrast
 # Remove rows where the .trt column contains "Waitlist"
 class_mapping_dic_cleaned <- class_mapping_dic[!is.na(class_mapping_dic$.y), ]
@@ -314,10 +305,12 @@ class_mapping_dic_cleaned_unique <- class_mapping_dic_cleaned %>%
 # DEV DEV Plot
 plotEXCO <- plot(sa_dic_COclass_RE, sa_dic_EXclass_RE, show_uncertainty = FALSE) +
   xlab("Residual deviance - Common Class model") +
-  ylab("Residual deviance - Exchangeable Class model")+
+  ylab("Residual deviance - Exchangeable Class model") +
+  geom_abline(slope = 1, intercept = 1, linetype = "dashed") +   # Line for x = y + 1
+  geom_abline(slope = 1, intercept = -1, linetype = "dashed") +  # Line for x + 1 = y
   theme(text = element_text(size = 18))
+
 plotEXCO
-ggsave("dev-dev_EXvsCO.pdf", plot = plotEXCO, width = 20, height = 20, units = "cm", path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables", scale = 1)
 
 # DEV DEV Plot
 plotCO <- plot(sa_dic_COclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
@@ -326,6 +319,8 @@ plotCO <- plot(sa_dic_COclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
 
 grid.arrange(plotEX, plotCO, ncol = 2)
 
+plot(sa_net, weight_edges = TRUE, show_trt_class = TRUE) +
+  ggplot2::theme(legend.position = "bottom", legend.box = "vertical")
 
 # UME vs CLASS Model
 plotEX1 <- plot(sa_dic_COclass_RE, sa_dic_ume_RE, show_uncertainty = FALSE) +
@@ -345,7 +340,7 @@ sa_fit_EXclass_RE_sum <- summary(sa_fit_EXclass_RE)
 sa_fit_EXclass_RE_sum <- as.data.frame(sa_fit_EXclass_RE_sum$summary)
 sa_fit_EXclass_RE_sum <- mutate(sa_fit_EXclass_RE_sum, Model = "Exchangeable Class")
 sa_fit_EXclass_RE_sum_trt <- filter(sa_fit_EXclass_RE_sum, grepl('^d\\[.*\\]$', parameter)|
-                                                           grepl('^class_mean\\[.*\\]$', parameter))
+                                      grepl('^class_mean\\[.*\\]$', parameter))
 
 # Add 'type' column based on 'parameter'
 sa_fit_EXclass_RE_sum_trt <- sa_fit_EXclass_RE_sum_trt %>%
@@ -438,13 +433,12 @@ sa_fit_RE_sum_trt <- sa_fit_RE_sum_trt %>%
   mutate(class = if_else(is.na(treatment_to_class[parameter]), parameter, treatment_to_class[parameter]))
 
 sa_fit_RE_sum_trt <- sa_fit_RE_sum_trt %>%
-                     mutate(is_bold = NA)
+  mutate(is_bold = NA)
 
 sa_fit_RE_EX_NMA_combined <- rbind(sa_fit_EXclass_RE_sum_trt_a_ordered, sa_fit_RE_sum_trt)
 
 sa_fit_RE_EX_NMA_combined <- sa_fit_RE_EX_NMA_combined %>%
   mutate(class_wrapped = str_wrap(class, width = 15))
-
 
 forestplot_NMAvsEX<-sa_fit_RE_EX_NMA_combined %>%
   ggplot(aes(x = parameter, y = mean, shape = Model, linetype = Model, ymin = `2.5%`, ymax = `97.5%`)) +
@@ -466,13 +460,7 @@ forestplot_NMAvsEX<-sa_fit_RE_EX_NMA_combined %>%
         axis.title = element_text(size = 10),
         axis.text = element_text(size = 10))
 
-
-ggsave("forestplot_NMAvsEX.pdf",
-       plot = forestplot_NMAvsEX,
-       width = 25, height = 30, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
+forestplot_NMAvsEX
 
 #=========== TREATMENT EFFECT PLOT COMMON & NMA
 
@@ -505,7 +493,7 @@ sa_fit_COclass_RE_sum_trt_a$parameter <- as.character(sa_fit_COclass_RE_sum_trt_
 
 # Modify 'parameter' to "Class Mean" if 'type' is 'Class', before applying the bold formatting
 sa_fit_COclass_RE_sum_trt_a <- sa_fit_COclass_RE_sum_trt_a %>%
-  mutate(parameter = if_else(type == "Class", "Class Mean", parameter))
+  mutate(parameter = if_else(type == "Class", "Common class mean", parameter))
 
 # Now apply bold formatting to 'parameter' if 'type' is 'Class'
 sa_fit_COclass_RE_sum_trt_a$parameter <- ifelse(
@@ -517,7 +505,7 @@ sa_fit_COclass_RE_sum_trt_a$parameter <- ifelse(
 sa_fit_COclass_RE_sum_trt_a$type <- as.character(sa_fit_COclass_RE_sum_trt_a$type)
 
 sa_fit_COclass_RE_sum_trt_a <- sa_fit_COclass_RE_sum_trt_a %>%
-                                mutate(is_bold = NA)
+  mutate(is_bold = NA)
 
 sa_fit_RE_CO_NMA_combined <- rbind(sa_fit_COclass_RE_sum_trt_a, sa_fit_RE_sum_trt)
 
@@ -542,12 +530,7 @@ forestplot_NMAvsCO <- sa_fit_RE_CO_NMA_combined_ordered %>%
         axis.text.y = ggtext::element_markdown(),
         legend.text = ggtext::element_markdown())
 
-ggsave("forestplot_NMAvsCO.pdf",
-       plot = forestplot_NMAvsCO,
-       width = 25, height = 30, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
+forestplot_NMAvsCO
 
 #=========== TREATMENT EFFECT PLOTS (Common Class) =====================
 # Summarize your data and convert to data frame
@@ -576,14 +559,15 @@ ggplot(sa_fit_COclass_RE_sum_trt, aes(x = parameter, y = mean, ymin = `2.5%`, ym
 
 #================= EX and CO classes results ==================================
 
-sa_fit_EXclass_RE_sum_CLASS <- filter(sa_fit_EXclass_RE_sum, grepl('^class_mean\\[.*\\]$', parameter) | parameter %in% c('d[Psychological placebo]', 'd[Psychodynamic psychotherapy]', 'd[Pill placebo]', 'd[Mirtazapine]', 'd[Exercise promotion]')) %>%
+sa_fit_EXclass_RE_sum_CLASS <- filter(sa_fit_EXclass_RE_sum, grepl('^class_mean\\[.*\\]$', parameter)) %>%
   mutate(parameter = gsub("^class_mean\\[|\\]$", "", parameter),
          parameter = gsub("^d\\[|\\]$", "", parameter),
          parameter = ifelse(parameter == "Mirtazapine", "NSSA", parameter))
 
-
 sa_fit_COclass_RE_sum_trt <- sa_fit_COclass_RE_sum_trt %>%
-                                mutate(Model = "Common Class")
+  mutate(Model = "Common Class")
+
+sa_fit_COclass_RE_sum_trt
 
 sa_fit_CLASS_RE_combined <- rbind(sa_fit_EXclass_RE_sum_CLASS, sa_fit_COclass_RE_sum_trt)
 ls(sa_fit_EXclass_RE_sum_CLASS)
@@ -595,7 +579,8 @@ sa_fit_CLASS_RE_combined_sorted <- sa_fit_CLASS_RE_combined %>%
 # Assuming 'Model' is the variable for which the legend order needs to be corrected
 sa_fit_CLASS_RE_combined_sorted$Model <- factor(sa_fit_CLASS_RE_combined_sorted$Model,
                                                 levels = c("Exchangeable Class", "Common Class"))
-
+sa_fit_CLASS_RE_combined_sorted <- sa_fit_CLASS_RE_combined_sorted %>%
+  filter(!grepl("Pill placebo|Psychological placebo", parameter))
 
 forestplot_EXvsCO <-sa_fit_CLASS_RE_combined_sorted %>%
   ggplot(aes(x=parameter, y=mean, ymin=`2.5%`, ymax=`97.5%`, shape = Model, linetype = Model), ref_line = 0) +
@@ -614,123 +599,7 @@ forestplot_EXvsCO <-sa_fit_CLASS_RE_combined_sorted %>%
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 13))
 
-ggsave("forestplot_EXvsCO.pdf",
-       plot = forestplot_EXvsCO,
-       width = 25, height = 20, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
-#================= Full Summary table of Results ==================================
-result_data <- read.csv("C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables/Summary_results.csv")
-result_data <- result_data %>%
-  mutate(across(everything(), as.character)) %>%
-  mutate(across(everything(), ~replace_na(., "")))
-
-names(result_data)[names(result_data) == "X"] <- "Treatment"
-
-summary_results <- gt(result_data) %>%
-  tab_header(
-    title = "Summary of treatment effects compared with waitlist"
-  ) %>%
-  cols_label(
-    Trails = "Trials",
-    Paticipants = "Participants",
-    NMA.Model = "NMA Model",
-    Common.Class = "Common Class",
-    Exchangeable.Class = "Exchangeable Class"
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = Treatment,
-      rows = c(2, 6, 26, 51)
-    )
-  ) %>%
-  # Center text in all columns except the first
-  tab_style(
-    style = list(
-      cell_text(align = "center")
-
-    ),
-    locations = cells_body(columns = -1)  # Excludes the first column
-  ) %>%
-  tab_style(
-    style = list(
-      cell_text(align = "center")
-    ),
-    locations = cells_column_labels(columns = everything())
-  ) %>%
-  cols_width(
-    1 ~ px(200)  # Set the width of the first column
-    # Other columns will use the default width
-  ) %>%
-  tab_style(
-    style = list(
-      cell_text(indent = 3)
-    ), location = cells_body(
-      columns = Treatment,
-      rows = c(3, 4, 5))
-  )
-
-summary_results
-
-summary_results <- gt(result_data) %>%
-  tab_header(
-    title = "Summary of treatment effects compared with waitlist"
-  ) %>%
-  cols_label(
-    Trails = "Trials",
-    Paticipants = "Participants",
-    `NMA.Model` = "NMA Model",
-    `Common.Class` = "Common Class",
-    `Exchangeable.Class` = "Exchangeable Class"
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = c("Treatment"),  # Updated to use `c()` instead of `vars()`
-      rows = c(2, 6, 26, 51)
-    )
-  ) %>%
-  # Center text in all columns except the first
-  tab_style(
-    style = list(
-      cell_text(align = "center")
-    ),
-    locations = cells_body(columns = -1)  # Excludes the first column
-  ) %>%
-  tab_style(
-    style = list(
-      cell_text(align = "center")
-    ),
-    locations = cells_column_labels(columns = everything())
-  ) %>%
-  cols_width(
-    1 ~ px(200)  # Set the width of the first column
-  ) %>%
-  tab_stub_indent(
-    rows = c(5),  # Specify the rows you wish to indent
-    indent = 2    # Specify the level of indentation as a numeric value
-  )
-
-summary_results
-
-
-library(webshot)
-webshot::install_phantomjs()
-webshot::webshot("file:///C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year%201/Class%20effects/Plots%20and%20tables/file65986dfe6b1a.html", "summary_results.png")
-# Path to your HTML file
-html_file_path <- "file:///C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year%201/Class%20effects/Plots%20and%20tables/file65986dfe6b1a.html"
-
-# Destination PNG file path
-png_file_path <- "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables/summary_table_test.png"
-
-# Use webshot to capture the HTML as a PNG image
-webshot::webshot(url = html_file_path, file = png_file_path, zoom = 2)
-
-
-
-gtsave(summary_results, "summary_results.pdf")
+forestplot_EXvsCO
 
 #==========================Treatment Rank Results==================================
 
@@ -764,7 +633,7 @@ combined_data <- combined_data %>%
   mutate(class_wrapped = str_wrap(class, width = 15))
 
 RankCI_NMAvsEX <- combined_data %>%
-ggplot(aes(x=.trt, y=`50%`, ymin=`2.5%`, ymax=`97.5%`, shape = Model)) +
+  ggplot(aes(x=.trt, y=`50%`, ymin=`2.5%`, ymax=`97.5%`, shape = Model)) +
   geom_point(position = position_dodge(width = .5), size = 2) +
   geom_pointrange(aes(linetype = Model), position = position_dodge(width = .5), size = 0.5) +
   facet_grid(rows = vars(class_wrapped), scales = "free_y", space = "free") +
@@ -781,12 +650,6 @@ ggplot(aes(x=.trt, y=`50%`, ymin=`2.5%`, ymax=`97.5%`, shape = Model)) +
     axis.text = element_text(size = 10))
 
 RankCI_NMAvsEX
-ggsave("RankCI_NMAvsEX.pdf",
-       plot = RankCI_NMAvsEX,
-       width = 25, height = 30, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
 
 ### Rank RESULTS for class model
 (sa_rankprobs_RE <- posterior_rank_probs(sa_fit_RE, lower_better = TRUE))
@@ -826,19 +689,13 @@ RankDensity_EXvsNMA <- ggplot(long_data, aes(x = Rank, y = Probability, linetype
   facet_wrap(~ .trt, scales = "free_x") +
   scale_linetype_manual(values = c("Exchangable Class" = "solid", "No Class" = "dashed")) +  # Specify linetypes for each Model
   theme_minimal() +
-  labs(title = "Rank Probability Distribution for Each Treatment by Model",
-       x = "Rank",
+  labs(x = "Rank",
        y = "Probability") +
   theme(text = element_text(size = 12),
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 12))
 
-ggsave("RankDensity_EXvsNMA.pdf",
-       plot = RankDensity_EXvsNMA,
-       width = 40, height = 25, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
+RankDensity_EXvsNMA
 
 #====Class ranks====
 EXclass_mean <- (as.matrix(sa_fit_EXclass_RE))
@@ -847,11 +704,7 @@ COclass_mean <- (as.matrix(sa_fit_COclass_RE, pars = "d"))
 
 # Specifying the specific columns to retain
 specific_columns_to_keep <- c(
-  "d[Exercise promotion]",
-  "d[Mirtazapine]",
-  "d[Pill placebo]",
-  "d[Psychodynamic psychotherapy]",
-  "d[Psychological placebo]"
+  "d[Pill placebo]","d[Psychological placebo]"
 )
 
 # Get all column names from EXclass_mean
@@ -905,9 +758,9 @@ COresults_df$class <- factor(COresults_df$class, levels = sort(unique(COresults_
 EXresults_df_sorted <- arrange(EXresults_df, class)
 COresults_df_sorted <- arrange(COresults_df, class)
 EXresults_df_sorted <- EXresults_df_sorted %>%
-                        mutate(Model = "Exchangeable")
+  mutate(Model = "Exchangeable")
 COresults_df_sorted <- COresults_df_sorted %>%
-                        mutate(Model = "Common")
+  mutate(Model = "Common")
 
 results_df_combined <- rbind(EXresults_df_sorted, COresults_df_sorted)
 
@@ -917,6 +770,9 @@ results_df_combined <- results_df_combined %>%
 
 # Now, redefine 'class' as a factor with sorted levels
 results_df_combined$class <- with(results_df_combined, factor(class, levels = rev(sort(unique(class)))))
+
+levels(results_df_combined$class)[levels(results_df_combined$class) == "Reference"] <- "Waitlist"
+
 
 RankCI_COvsEX<-results_df_combined %>%
   ggplot(aes(x=class, y=`50%`, ymin=`2.5%`, ymax=`97.5%`, shape = Model)) +
@@ -938,13 +794,7 @@ RankCI_COvsEX<-results_df_combined %>%
 
 RankCI_COvsEX
 
-ggsave("RankCI_COvsEX.pdf",
-       plot = RankCI_COvsEX,
-       width = 30, height = 25, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
-
-
+#----
 EXranks_df <- as.data.frame(EXranks)
 COranks_df <- as.data.frame(COranks)
 
@@ -995,30 +845,24 @@ rank_probs_long_combined <- rbind(rank_probs_long_CO, rank_probs_long_EX)
 rank_probs_long_combined <- rank_probs_long_combined %>%
   mutate(Class = ifelse(Class == "Mirtazapine", "NSSA", Class))
 
-
-
 RankDensity_EXvsCO<-ggplot(rank_probs_long_combined, aes(x = Rank, y = Probability, group = interaction(Class, Model), linetype = Model)) +
   geom_line() +
   facet_wrap(~ Class) + # Assuming you might want each class to have its own y scale for clarity
   theme_minimal() +
-  labs(title = "Rank Probability Distribution by Class",
-       x = "Rank",
+  labs(x = "Rank",
        y = "Probability") +
   scale_x_continuous(breaks = 1:max(rank_probs_long_combined$Rank)) + # Ensure you're referencing the correct dataframe
   scale_linetype_discrete(name = "Model") + # Optional: Customize the legend title for linetypes
   theme(
-  strip.text.y = element_text(angle = 0, hjust = 1),
-  text = element_text(size = 18),
-  axis.title = element_text(size = 15),
-  axis.text = element_text(size = 11),
-  axis.text.y = ggtext::element_markdown(),
-  legend.text = ggtext::element_markdown()
-)
+    strip.text.y = element_text(angle = 0, hjust = 1),
+    text = element_text(size = 18),
+    axis.title = element_text(size = 15),
+    axis.text = element_text(size = 11),
+    axis.text.y = ggtext::element_markdown(),
+    legend.text = ggtext::element_markdown(),
+    legend.position = c(0.95, 0.03),
+    legend.justification = c("right", "bottom")
+  )
 
 RankDensity_EXvsCO
 
-ggsave("RankDensity_EXvsCO.pdf",
-       plot = RankDensity_EXvsCO,
-       width = 45, height = 25, units = "cm",
-       path = "C:/Users/sjper/OneDrive/Desktop/PhD-Compass_Scheme/Year 1/Class effects/Plots and tables",
-       scale = 1)
