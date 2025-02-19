@@ -866,3 +866,88 @@ RankDensity_EXvsCO<-ggplot(rank_probs_long_combined, aes(x = Rank, y = Probabili
 
 RankDensity_EXvsCO
 
+#===== Leverage plot =============
+
+# Extract data for plotting
+resdev <- sa_dic_EXclass_RE[["pointwise"]][["agd_contrast"]][["resdev"]]
+resdev_sqrt <- sqrt(resdev)
+leverage <- sa_dic_EXclass_RE[["pointwise"]][["agd_contrast"]][["leverage"]]
+df <- sa_dic_EXclass_RE[["pointwise"]][["agd_contrast"]][["n_contrast"]]
+
+# Create a data frame for ggplot2, including the existing labels
+plot_data <- data.frame(
+  resdev = resdev,
+  Leverage = leverage,
+  df = df,
+  Label = names(resdev)  # Use the names of resdev as the labels
+)
+
+# Divide resdev and leverage by df
+plot_data$resdev_per_df <- plot_data$resdev / plot_data$df
+plot_data$leverage_per_df <- plot_data$Leverage / plot_data$df
+plot_data$resdevper_df_sqrt <- sqrt(plot_data$resdev_per_df)
+
+
+# Subset for specific points to label
+labels <- plot_data[plot_data$Label %in% c("resdev[ALDEN2011]"), ]
+# Modify the Label column to remove "resdev[" and "]"
+labels$Label <- gsub("resdev\\[|\\]", "", labels$Label)
+
+
+# Calculate the sums
+sum_resdev <- sum(resdev, na.rm = TRUE)
+sum_leverage <- sum(leverage, na.rm = TRUE)
+
+# Create a data frame for DIC lines
+dic_values <- c(1, 2, 3)  # DIC values to plot
+dic_lines <- data.frame(
+  SqrtResidualDeviance = numeric(),
+  Leverage = numeric(),
+  DIC = factor()
+)
+
+# Generate curves for each DIC value
+for (dic in dic_values) {
+  sqrt_resdev_seq <- seq(0, sqrt(dic), length.out = 100)  # Generate sqrt resdev values
+  leverage_seq <- dic - sqrt_resdev_seq^2                # Corresponding leverage values
+  dic_lines <- rbind(dic_lines, data.frame(
+    SqrtResidualDeviance = sqrt_resdev_seq,
+    Leverage = leverage_seq,
+    DIC = factor(dic)
+  ))
+}
+
+# Create the annotation text
+annotation_text <- paste0(
+  "Sum of Residual Deviance: ", round(sum_resdev, 2), "\n",
+  "Sum of Leverage: ", round(sum_leverage, 2)
+)
+
+# Create the plot
+Leverage_plot <- ggplot() +
+  # Plot the main data points
+  geom_point(data = plot_data, aes(x = resdevper_df_sqrt, y = leverage_per_df), color = "blue") +
+  # Plot the DIC curves
+  geom_line(data = dic_lines, aes(x = SqrtResidualDeviance, y = Leverage, color = DIC), linetype = "dashed") +
+  # Add the annotation text
+  annotate(
+    "text", x = max(resdev_sqrt) * 0.95, y = max(leverage) * 0.8,
+    label = annotation_text, hjust = 0.9, vjust = -0.5, size = 4, color = "black"
+  ) +
+  # Add labels for specific points
+  geom_text(data = labels, aes(x = resdevper_df_sqrt, y = leverage_per_df, label = Label),
+            hjust = 0.6, vjust = -2, size = 4, color = "red") +
+  # Customize labels and appearance
+  labs(
+    x = "Square Root of Residual Deviance",
+    y = "Leverage",
+    color = "DIC"
+  ) +
+  theme_minimal(base_size = 15)
+
+Leverage_plot <- Leverage_plot +
+  theme(text = element_text(size = 10))
+
+Leverage_plot
+
+
