@@ -1,6 +1,5 @@
 # Social Anxiety
 library(devtools)
-setwd("~/Desktop/Github/multinma")
 library(multinma)
 library(dplyr)
 library(tidyr)
@@ -43,7 +42,6 @@ sa_net <- set_agd_contrast(social_anxiety,
                            trt_class = classc,
                            trt_ref = "Waitlist")
 
-undebug(multinma::nma)
 #================= Model simulations ==================================
 set.seed(951)
 # UME model vs trt effects
@@ -136,13 +134,6 @@ summary(sa_fit_EXclass_RE, pars = "class_mean")
 summary(sa_fit_EXclass_RE, pars = "d")
 summary(sa_fit_COclass_RE, pars = "d")
 
-# DEV DEV Plot
-PlotA <- plot(sa_dic_ume_RE, sa_dic_COclass_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - UME RE Model") +
-  ylab("Residual deviance - Common RE Model")
-
-PlotA
-
 #========Nodesplitting==========
 
 Investigate <- sa_fit_RE$network$agd_contrast
@@ -181,15 +172,7 @@ sa_fit_RE_nodesplit_1 <- nma(sa_net,
 summary(sa_fit_RE_nodesplit)
 summary(sa_fit_RE_nodesplit_1)
 
-plot(sa_dic_RE)
-sa_dic_RE$pointwise$agd_contrast
-# DEV DEV Plot
-plotume <- plot(sa_dic_RE, sa_dic_ume_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - No Class model") +
-  ylab("Residual deviance - UME model") +
-  theme(text = element_text(size = 18))
-
-plotume
+#============dev-dev plots==========
 
 resdev_RE <- sa_dic_RE$pointwise$agd_contrast$resdev
 resdev_ume_RE <- sa_dic_ume_RE$pointwise$agd_contrast$resdev
@@ -204,10 +187,6 @@ dev_dev_EXvsCO <- data.frame(resdev_RE_CO, resdev_RE_EX, df)
 dev_dev_UMEvsNMA$dev_diff <- dev_dev_UMEvsNMA$resdev_RE - dev_dev_UMEvsNMA$resdev_ume_RE
 dev_dev_NMAvsEX$dev_diff <- dev_dev_NMAvsEX$resdev_RE_EX - dev_dev_NMAvsEX$resdev_RE
 dev_dev_EXvsCO$dev_diff <- dev_dev_EXvsCO$resdev_RE_CO - dev_dev_EXvsCO$resdev_RE_EX
-
-sa_net$agd_contrast$.trtclass
-
-#============dev-dev plots==========
 
 dev_dev_UMEvsNMA$markerType <- 1
 rownames(dev_dev_UMEvsNMA)[grepl("ALDEN2011", rownames(dev_dev_UMEvsNMA))] -> special_cases1
@@ -285,12 +264,6 @@ plotEXvsCO<-ggplot(data = dev_dev_EXvsCO, aes(x = resdev_RE_CO, y = resdev_RE_EX
 plotEXvsCO
 
 # DEV DEV Plot EX vs no class
-plotEX <- plot(sa_dic_EXclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - Exchangeable Class model") +
-  ylab("Residual deviance - No Class model") +
-  theme(text = element_text(size = 18))
-plotEX
-
 resdev_RE_EX <- sa_dic_EXclass_RE$pointwise$agd_contrast$resdev
 resdev_RE <- sa_dic_RE$pointwise$agd_contrast$resdev
 resdev_RE
@@ -301,39 +274,6 @@ class_mapping_dic_cleaned <- class_mapping_dic[!is.na(class_mapping_dic$.y), ]
 
 class_mapping_dic_cleaned_unique <- class_mapping_dic_cleaned %>%
   distinct(.study, classn, .keep_all = TRUE)
-
-# DEV DEV Plot
-plotEXCO <- plot(sa_dic_COclass_RE, sa_dic_EXclass_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - Common Class model") +
-  ylab("Residual deviance - Exchangeable Class model") +
-  geom_abline(slope = 1, intercept = 1, linetype = "dashed") +   # Line for x = y + 1
-  geom_abline(slope = 1, intercept = -1, linetype = "dashed") +  # Line for x + 1 = y
-  theme(text = element_text(size = 18))
-
-plotEXCO
-
-# DEV DEV Plot
-plotCO <- plot(sa_dic_COclass_RE, sa_dic_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - Common Class model") +
-  ylab("")
-
-grid.arrange(plotEX, plotCO, ncol = 2)
-
-plot(sa_net, weight_edges = TRUE, show_trt_class = TRUE) +
-  ggplot2::theme(legend.position = "bottom", legend.box = "vertical")
-
-# UME vs CLASS Model
-plotEX1 <- plot(sa_dic_COclass_RE, sa_dic_ume_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - Common Class model") +
-  ylab("Residual deviance - UME model")
-
-plotCO1 <- plot(sa_dic_EXclass_RE, sa_dic_ume_RE, show_uncertainty = FALSE) +
-  xlab("Residual deviance - Exchangable Class model") +
-  ylab("")
-
-grid.arrange(plotEX1, plotCO1, ncol = 2)
-
-
 
 #=========== TREATMENT EFFECT PLOTS (Exchangeable Class)=====================
 sa_fit_EXclass_RE_sum <- summary(sa_fit_EXclass_RE)
@@ -407,8 +347,6 @@ sa_fit_EXclass_RE_sum_trt_a_ordered %>%
         legend.text = element_markdown()) +
   guides(size = FALSE)  # Use ggtext for legend text
 
-
-
 #====EXCHANGEABLE CLASS VS NMA=============================
 sa_fit_RE_sum <- summary(sa_fit_RE)
 sa_fit_RE_sum <- as.data.frame(sa_fit_RE_sum$summary)
@@ -463,7 +401,6 @@ forestplot_NMAvsEX<-sa_fit_RE_EX_NMA_combined %>%
 forestplot_NMAvsEX
 
 #=========== TREATMENT EFFECT PLOT COMMON & NMA
-
 sa_fit_COclass_RE_sum <- summary(sa_fit_COclass_RE)
 sa_fit_COclass_RE_sum <- as.data.frame(sa_fit_COclass_RE_sum$summary)
 sa_fit_COclass_RE_sum <- mutate(sa_fit_COclass_RE_sum, Model = "Common Class")
@@ -576,7 +513,6 @@ ls(sa_fit_COclass_RE_sum_trt)
 sa_fit_CLASS_RE_combined_sorted <- sa_fit_CLASS_RE_combined %>%
   mutate(parameter = factor(parameter, levels = rev(sort(unique(parameter)))))
 
-# Assuming 'Model' is the variable for which the legend order needs to be corrected
 sa_fit_CLASS_RE_combined_sorted$Model <- factor(sa_fit_CLASS_RE_combined_sorted$Model,
                                                 levels = c("Exchangeable Class", "Common Class"))
 sa_fit_CLASS_RE_combined_sorted <- sa_fit_CLASS_RE_combined_sorted %>%
@@ -607,7 +543,6 @@ forestplot_EXvsCO
 (sa_ranks_RE <- posterior_ranks(sa_fit_RE, lower_better = TRUE))
 (sa_ranks_EXclass_RE <- posterior_ranks(sa_fit_EXclass_RE, lower_better = TRUE))
 
-# Example extraction (modify based on your actual object structure):
 data_RE <- sa_ranks_RE$summary %>%
   mutate(Model = "No Class")
 
@@ -690,10 +625,7 @@ RankDensity_EXvsNMA <- ggplot(long_data, aes(x = Rank, y = Probability, linetype
   scale_linetype_manual(values = c("Exchangable Class" = "solid", "No Class" = "dashed")) +  # Specify linetypes for each Model
   theme_minimal() +
   labs(x = "Rank",
-       y = "Probability") +
-  theme(text = element_text(size = 12),
-        axis.title = element_text(size = 15),
-        axis.text = element_text(size = 12))
+       y = "Probability")
 
 RankDensity_EXvsNMA
 
@@ -710,7 +642,7 @@ specific_columns_to_keep <- c(
 # Get all column names from EXclass_mean
 all_col_names <- colnames(EXclass_mean)
 
-# Dynamically include columns that start with "class_mean"
+# Include columns that start with "class_mean"
 class_mean_cols <- grep("^class_mean", all_col_names, value = TRUE)
 
 # Combine "class_mean" columns with specific "d[" columns
@@ -734,10 +666,8 @@ colMeans(COranks)
 apply(EXranks, 2, quantile, probs = c(0.025, 0.5, 0.975))
 apply(COranks, 2, quantile, probs = c(0.025, 0.5, 0.975))
 
-# Assuming 'results' is your matrix from the 'apply' function
 EXresults <- t(apply(EXranks, 2, quantile, probs = c(0.025, 0.5, 0.975)))
 COresults <- t(apply(COranks, 2, quantile, probs = c(0.025, 0.5, 0.975)))
-
 
 # Convert to data frame and make it long format
 EXresults_df <- as.data.frame(EXresults)
@@ -772,7 +702,6 @@ results_df_combined <- results_df_combined %>%
 results_df_combined$class <- with(results_df_combined, factor(class, levels = rev(sort(unique(class)))))
 
 levels(results_df_combined$class)[levels(results_df_combined$class) == "Reference"] <- "Waitlist"
-
 
 RankCI_COvsEX<-results_df_combined %>%
   ggplot(aes(x=class, y=`50%`, ymin=`2.5%`, ymax=`97.5%`, shape = Model)) +
@@ -841,7 +770,6 @@ rank_probs_long_CO <- rank_probs_long_CO %>%
 
 rank_probs_long_combined <- rbind(rank_probs_long_CO, rank_probs_long_EX)
 
-# Assuming 'Model' is the column containing "Mirtazapine"
 rank_probs_long_combined <- rank_probs_long_combined %>%
   mutate(Class = ifelse(Class == "Mirtazapine", "NSSA", Class))
 
@@ -887,12 +815,10 @@ plot_data$resdev_per_df <- plot_data$resdev / plot_data$df
 plot_data$leverage_per_df <- plot_data$Leverage / plot_data$df
 plot_data$resdevper_df_sqrt <- sqrt(plot_data$resdev_per_df)
 
-
 # Subset for specific points to label
 labels <- plot_data[plot_data$Label %in% c("resdev[ALDEN2011]"), ]
 # Modify the Label column to remove "resdev[" and "]"
 labels$Label <- gsub("resdev\\[|\\]", "", labels$Label)
-
 
 # Calculate the sums
 sum_resdev <- sum(resdev, na.rm = TRUE)
