@@ -1,2 +1,2 @@
 # NMA_with_class_effects
-This respository includes the code used to generate the analysis and plots for the paper title "NMA with Class and model selection algorithm"  effects: a practical guide
+This respository includes the code used to generate the analysis and plots for the paper titled "Network meta-analysis with class effects: a practical guide and model selection algorithm"
